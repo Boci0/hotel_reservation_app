@@ -3,26 +3,31 @@ import 'package:flutter/material.dart';
 class _HotelRoom {
   const _HotelRoom({
     required this.name,
-    required this.category,
+    required this.roomType,
+    required this.shortDescription,
+    required this.detailedDescription,
     required this.pricePerNight,
     required this.capacity,
-    required this.amenities,
+    required this.sizeSqm,
+    required this.bedType,
+    required this.imageAsset,
+    required this.facilities,
+    required this.extraAmenities,
     required this.icon,
   });
 
   final String name;
-  final String category;
+  final String roomType;
+  final String shortDescription;
+  final String detailedDescription;
   final double pricePerNight;
   final int capacity;
-  final List<String> amenities;
+  final int sizeSqm;
+  final String bedType;
+  final String imageAsset;
+  final List<String> facilities;
+  final List<String> extraAmenities;
   final IconData icon;
-}
-
-class _FaqItem {
-  const _FaqItem({required this.header, required this.body});
-
-  final String header;
-  final String body;
 }
 
 class RoomListPage extends StatefulWidget {
@@ -33,135 +38,473 @@ class RoomListPage extends StatefulWidget {
 }
 
 class _RoomListPageState extends State<RoomListPage> {
-  double _maxPrice = 600;
-  int _currentlyExpandedIndex = 0;
+  double _maxPrice = 800;
+  String _selectedRoomType = 'All';
+  bool _isGridView = false;
+  final Set<String> _expandedRoomNames = <String>{};
+
+  final Map<String, bool> _selectedFacilities = {
+    'Wi-Fi': false,
+    'Breakfast': false,
+    'Parking': false,
+    'Swimming Pool': false,
+  };
+
+  static const List<String> _roomTypes = ['All', 'Single', 'Double', 'Suite'];
 
   static const List<_HotelRoom> _rooms = [
     _HotelRoom(
       name: 'Standard Garden Room',
-      category: 'Single',
+      roomType: 'Single',
+      shortDescription:
+          'Cozy garden-facing room tailored for solo travelers and business guests.',
+      detailedDescription:
+          'Unwind in a tranquil 28 sqm sanctuary overlooking lush Borneo ferns. Includes blackout curtains, an ergonomic work desk, high-speed fiber Wi-Fi, complimentary parking, and a walk-in rain shower.',
       pricePerNight: 180,
       capacity: 2,
-      amenities: ['Free Wi-Fi', 'Rain Shower', 'Work Desk'],
+      sizeSqm: 28,
+      bedType: 'Queen Bed',
+      imageAsset: 'assets/images/room_standard.jpg',
+      facilities: ['Wi-Fi', 'Parking'],
+      extraAmenities: ['Rain Shower', 'Work Desk', 'Smart TV'],
       icon: Icons.single_bed_outlined,
     ),
     _HotelRoom(
       name: 'Deluxe Riverfront Twin',
-      category: 'Double',
+      roomType: 'Double',
+      shortDescription:
+          'Spacious river-view room with private balcony and daily breakfast buffet.',
+      detailedDescription:
+          'Wake up to golden Sarawak River reflections from your private balcony. Features dual plush beds, daily buffet breakfast for two, complimentary basement parking, and high-speed Wi-Fi.',
       pricePerNight: 320,
       capacity: 3,
-      amenities: ['River Balcony', 'Breakfast Included', 'Smart TV'],
+      sizeSqm: 38,
+      bedType: 'Twin or King Bed',
+      imageAsset: 'assets/images/room_deluxe.jpg',
+      facilities: ['Wi-Fi', 'Breakfast', 'Parking'],
+      extraAmenities: ['River Balcony', 'Smart TV', 'Mini Bar'],
       icon: Icons.bed_outlined,
     ),
     _HotelRoom(
       name: 'Executive Horizon Suite',
-      category: 'Suite',
+      roomType: 'Suite',
+      shortDescription:
+          'Panoramic corner suite with lounge privileges, soaking tub, and pool access.',
+      detailedDescription:
+          'Designed for extended luxury with a separate living lounge, panoramic sunset views, complimentary breakfast buffet, infinity swimming pool access, and evening refreshments at the Horizon Lounge.',
       pricePerNight: 540,
       capacity: 4,
-      amenities: ['Lounge Access', 'Soaking Tub', 'Airport Transfer'],
+      sizeSqm: 56,
+      bedType: 'King Bed + Sofa Bed',
+      imageAsset: 'assets/images/room_executive.jpg',
+      facilities: ['Wi-Fi', 'Breakfast', 'Swimming Pool'],
+      extraAmenities: ['Lounge Access', 'Soaking Tub', 'Airport Transfer'],
       icon: Icons.king_bed_outlined,
     ),
     _HotelRoom(
       name: 'Presidential Canopy Loft',
-      category: 'Suite',
+      roomType: 'Suite',
+      shortDescription:
+          'Signature two-level penthouse loft with private terrace and butler service.',
+      detailedDescription:
+          'Our flagship 98 sqm loft delivers unmatched privacy with vaulted timber ceilings, private plunge terrace, dedicated butler, gourmet breakfast, priority parking, and full swimming pool & spa privileges.',
       pricePerNight: 780,
       capacity: 6,
-      amenities: ['Private Terrace', 'Butler Service', 'Dining Area'],
+      sizeSqm: 98,
+      bedType: '2 King Beds',
+      imageAsset: 'assets/images/room_presidential.jpg',
+      facilities: ['Wi-Fi', 'Breakfast', 'Parking', 'Swimming Pool'],
+      extraAmenities: ['Private Terrace', 'Butler Service', 'Dining Area'],
       icon: Icons.villa_outlined,
     ),
   ];
 
-  static const List<_FaqItem> _faqs = [
-    _FaqItem(
-      header: 'Check-in & Check-out Policy',
-      body: 'Standard check-in starts at 3:00 PM and check-out is by 12:00 PM. '
-          'Late check-out until 2:00 PM can be added from the booking dashboard.',
-    ),
-    _FaqItem(
-      header: 'Free Cancellation Window',
-      body: 'Reservations may be modified or cancelled without charge up to '
-          '48 hours prior to the scheduled check-in date.',
-    ),
-    _FaqItem(
-      header: 'Airport Shuttle & Parking',
-      body: 'Complimentary basement parking is provided for all guests. '
-          'Airport transfers operate hourly from 6:00 AM to 11:00 PM.',
-    ),
-  ];
+  List<_HotelRoom> get _filteredRooms {
+    final activeFacilities = _selectedFacilities.entries
+        .where((entry) => entry.value)
+        .map((entry) => entry.key)
+        .toList();
 
-  void _showRoomDetails(_HotelRoom room) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    return _rooms.where((room) {
+      if (room.pricePerNight > _maxPrice) {
+        return false;
+      }
+      if (_selectedRoomType != 'All' && room.roomType != _selectedRoomType) {
+        return false;
+      }
+      for (final facility in activeFacilities) {
+        if (!room.facilities.contains(facility)) {
+          return false;
+        }
+      }
+      return true;
+    }).toList();
+  }
+
+  void _resetFilters() {
+    setState(() {
+      _maxPrice = 800;
+      _selectedRoomType = 'All';
+      for (final key in _selectedFacilities.keys) {
+        _selectedFacilities[key] = false;
+      }
+    });
+  }
+
+  void _selectRoom(_HotelRoom room) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${room.name} selected (RM ${room.pricePerNight.toInt()}/night)'),
+        behavior: SnackBarBehavior.floating,
       ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 24,
-                  child: Icon(room.icon),
+    );
+  }
+
+  Widget _buildRoomImage(_HotelRoom room, ColorScheme colorScheme) {
+    return SizedBox(
+      height: 165,
+      width: double.infinity,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            room.imageAsset,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Container(
+              color: colorScheme.primaryContainer,
+              child: Icon(room.icon, size: 54, color: colorScheme.primary),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.15),
+                  Colors.black.withValues(alpha: 0.5),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            top: 10,
+            left: 10,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: colorScheme.primary,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                room.roomType,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                 ),
-                const SizedBox(width: 14),
-                Expanded(
+              ),
+            ),
+          ),
+          Positioned(
+            top: 10,
+            right: 10,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.72),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                'RM ${room.pricePerNight.toInt()} / night',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoomCard(_HotelRoom room, ColorScheme colorScheme) {
+    final isExpanded = _expandedRoomNames.contains(room.name);
+
+    return Card(
+      key: Key('roomCard_${room.name}'),
+      clipBehavior: Clip.antiAlias,
+      margin: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildRoomImage(room, colorScheme),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        room.name,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Up to ${room.capacity} guests',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  room.shortDescription,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey.shade700,
+                      ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: room.facilities
+                      .map(
+                        (facility) => Chip(
+                          visualDensity: VisualDensity.compact,
+                          label: Text(
+                            facility,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+            ),
+          ),
+          ExpansionPanelList(
+            elevation: 0,
+            expandedHeaderPadding: EdgeInsets.zero,
+            dividerColor: Colors.grey.shade200,
+            expansionCallback: (panelIndex, currentIsExpanded) {
+              setState(() {
+                if (_expandedRoomNames.contains(room.name)) {
+                  _expandedRoomNames.remove(room.name);
+                } else {
+                  _expandedRoomNames.add(room.name);
+                }
+              });
+            },
+            children: [
+              ExpansionPanel(
+                canTapOnHeader: true,
+                isExpanded: isExpanded,
+                headerBuilder: (context, expanded) => ListTile(
+                  key: Key('expandRoom_${room.name}'),
+                  dense: true,
+                  leading: Icon(
+                    Icons.info_outline,
+                    color: colorScheme.primary,
+                    size: 20,
+                  ),
+                  title: const Text(
+                    'Room Details, Facilities & Description',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                ),
+                body: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        room.name,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                        room.detailedDescription,
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
-                      Text(
-                        '${room.category} • Up to ${room.capacity} guests',
-                        style: TextStyle(color: Colors.grey.shade700),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Icon(Icons.square_foot,
+                              size: 16, color: colorScheme.primary),
+                          const SizedBox(width: 4),
+                          Text('${room.sizeSqm} sqm'),
+                          const SizedBox(width: 16),
+                          Icon(Icons.bed_outlined,
+                              size: 16, color: colorScheme.primary),
+                          const SizedBox(width: 4),
+                          Expanded(child: Text(room.bedType)),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Additional Amenities',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: room.extraAmenities
+                            .map(
+                              (amenity) => Chip(
+                                visualDensity: VisualDensity.compact,
+                                avatar: const Icon(Icons.check, size: 14),
+                                label: Text(
+                                  amenity,
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: () => _selectRoom(room),
+                          icon: const Icon(Icons.check_circle_outline),
+                          label: const Text('Select This Room'),
+                        ),
                       ),
                     ],
                   ),
                 ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFiltersCard(ColorScheme colorScheme) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
                 Text(
-                  'RM ${room.pricePerNight.toInt()}',
+                  'Filter Rooms',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
                       ),
+                ),
+                TextButton.icon(
+                  key: const Key('resetRoomFilters'),
+                  onPressed: _resetFilters,
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Reset'),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Max Nightly Price Preference',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  'RM ${_maxPrice.round()}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+            Slider(
+              key: const Key('roomPriceSlider'),
+              value: _maxPrice,
+              min: 180,
+              max: 800,
+              divisions: 12,
+              label: 'RM ${_maxPrice.round()}',
+              onChanged: (value) {
+                setState(() {
+                  _maxPrice = value;
+                });
+              },
+            ),
+            const Divider(),
             const Text(
-              'Included Amenities',
+              'Room Type',
               style: TextStyle(fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: room.amenities
-                  .map((amenity) => Chip(label: Text(amenity)))
-                  .toList(),
-            ),
-            const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${room.name} selected for booking'),
-                    ),
-                  );
-                },
-                child: const Text('Select This Room'),
+            RadioGroup<String>(
+              groupValue: _selectedRoomType,
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() {
+                    _selectedRoomType = value;
+                  });
+                }
+              },
+              child: Wrap(
+                spacing: 4,
+                children: _roomTypes
+                    .map(
+                      (type) => SizedBox(
+                        width: 145,
+                        child: RadioListTile<String>(
+                          key: Key('roomTypeRadio_$type'),
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(type),
+                          value: type,
+                        ),
+                      ),
+                    )
+                    .toList(),
               ),
+            ),
+            const Divider(),
+            const Text(
+              'Additional Facilities',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            Wrap(
+              spacing: 4,
+              children: _selectedFacilities.keys
+                  .map(
+                    (facility) => SizedBox(
+                      width: 170,
+                      child: CheckboxListTile(
+                        key: Key('facilityCheckbox_$facility'),
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        title: Text(facility),
+                        value: _selectedFacilities[facility],
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedFacilities[facility] = value ?? false;
+                          });
+                        },
+                      ),
+                    ),
+                  )
+                  .toList(),
             ),
           ],
         ),
@@ -171,125 +514,95 @@ class _RoomListPageState extends State<RoomListPage> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredRooms =
-        _rooms.where((room) => room.pricePerNight <= _maxPrice).toList();
+    final colorScheme = Theme.of(context).colorScheme;
+    final filteredRooms = _filteredRooms;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Available Rooms'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Max Nightly Budget',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      Text(
-                        'RM ${_maxPrice.round()}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Slider(
-                    value: _maxPrice,
-                    min: 200,
-                    max: 800,
-                    divisions: 6,
-                    label: 'RM ${_maxPrice.round()}',
-                    onChanged: (value) {
-                      setState(() {
-                        _maxPrice = value;
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
+        actions: [
+          IconButton(
+            key: const Key('toggleRoomLayout'),
+            tooltip: _isGridView ? 'Switch to List View' : 'Switch to Grid View',
+            icon: Icon(_isGridView ? Icons.view_agenda_outlined : Icons.grid_view),
+            onPressed: () {
+              setState(() {
+                _isGridView = !_isGridView;
+              });
+            },
           ),
-          const SizedBox(height: 12),
-          ...filteredRooms.map(
-            (room) => Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              child: ListTile(
-                contentPadding: const EdgeInsets.all(16),
-                leading: CircleAvatar(
-                  radius: 26,
-                  child: Icon(room.icon),
-                ),
-                title: Text(
-                  room.name,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(
-                  '${room.category} • Up to ${room.capacity} guests\n${room.amenities.join(' · ')}',
-                ),
-                isThreeLine: true,
-                trailing: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      'RM ${room.pricePerNight.toInt()}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    const Text('per night', style: TextStyle(fontSize: 11)),
-                  ],
-                ),
-                onTap: () => _showRoomDetails(room),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Hotel Policies & FAQ',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: 8),
-          ...List.generate(_faqs.length, (index) {
-            final item = _faqs[index];
-            return Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ExpansionTile(
-                key: ValueKey('faq_${index}_$_currentlyExpandedIndex'),
-                initiallyExpanded: index == _currentlyExpandedIndex,
-                title: Text(
-                  item.header,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                onExpansionChanged: (expanded) {
-                  setState(() {
-                    _currentlyExpandedIndex = expanded ? index : -1;
-                  });
-                },
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    child: Text(item.body),
-                  ),
-                ],
-              ),
-            );
-          }),
         ],
+      ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final useTwoColumns = _isGridView && constraints.maxWidth >= 600;
+
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _buildFiltersCard(colorScheme),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Showing ${filteredRooms.length} of ${_rooms.length} Rooms',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade700,
+                        ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              if (filteredRooms.isEmpty)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.search_off_rounded,
+                          size: 48,
+                          color: Colors.grey.shade500,
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'No rooms match your current filters',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Try increasing your budget or clearing a facility filter.',
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        FilledButton.tonal(
+                          onPressed: _resetFilters,
+                          child: const Text('Reset Filters'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else if (useTwoColumns)
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 0,
+                  children: filteredRooms
+                      .map(
+                        (room) => SizedBox(
+                          width: (constraints.maxWidth - 44) / 2,
+                          child: _buildRoomCard(room, colorScheme),
+                        ),
+                      )
+                      .toList(),
+                )
+              else
+                ...filteredRooms.map((room) => _buildRoomCard(room, colorScheme)),
+            ],
+          );
+        },
       ),
     );
   }

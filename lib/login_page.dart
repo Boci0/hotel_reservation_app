@@ -97,9 +97,10 @@ class _LoginPageState extends State<LoginPage> {
                           children: [
                             Text(
                               'Welcome Back',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                             const SizedBox(height: 16),
                             TextFormField(
@@ -108,17 +109,23 @@ class _LoginPageState extends State<LoginPage> {
                               keyboardType: TextInputType.emailAddress,
                               textInputAction: TextInputAction.next,
                               decoration: const InputDecoration(
-                                labelText: 'Email Address',
-                                hintText: 'guest@example.com',
-                                prefixIcon: Icon(Icons.email_outlined),
+                                labelText: 'Email or Username',
+                                hintText: 'guest@example.com or username',
+                                prefixIcon: Icon(Icons.person_outline),
                               ),
                               validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Email is required';
+                                final trimmed = value?.trim() ?? '';
+                                if (trimmed.isEmpty) {
+                                  return 'Email or username is required';
                                 }
-                                if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
-                                    .hasMatch(value.trim())) {
-                                  return 'Enter a valid email';
+                                if (trimmed.contains('@')) {
+                                  if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                                      .hasMatch(trimmed)) {
+                                    return 'Enter a valid email';
+                                  }
+                                } else if (trimmed.length < 3 ||
+                                    trimmed.contains(' ')) {
+                                  return 'Enter a valid username (min 3 characters, no spaces)';
                                 }
                                 return null;
                               },
@@ -134,6 +141,9 @@ class _LoginPageState extends State<LoginPage> {
                                 hintText: 'Enter your password',
                                 prefixIcon: const Icon(Icons.lock_outline),
                                 suffixIcon: IconButton(
+                                  tooltip: _obscurePassword
+                                      ? 'Show password'
+                                      : 'Hide password',
                                   icon: Icon(
                                     _obscurePassword
                                         ? Icons.visibility_outlined
@@ -176,13 +186,14 @@ class _LoginPageState extends State<LoginPage> {
                               icon: const Icon(Icons.login),
                               label: const Padding(
                                 padding: EdgeInsets.symmetric(vertical: 12),
-                                child: Text('Sign In'),
+                                child: Text('Login'),
                               ),
                             ),
                             const SizedBox(height: 10),
                             OutlinedButton(
                               onPressed: () {
-                                Navigator.pushReplacementNamed(context, '/dashboard');
+                                Navigator.pushReplacementNamed(
+                                    context, '/dashboard');
                               },
                               child: const Text('Continue as Guest'),
                             ),
@@ -197,10 +208,11 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       const Text('New to Borneo Crest?'),
                       TextButton(
+                        key: const Key('loginToSignupButton'),
                         onPressed: () {
                           Navigator.pushNamed(context, '/signup');
                         },
-                        child: const Text('Create Account'),
+                        child: const Text('Sign Up'),
                       ),
                     ],
                   ),
